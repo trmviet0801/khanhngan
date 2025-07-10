@@ -45,10 +45,10 @@ int main() {
             case 3: searchStudent(); break;
             case 4: displayAll(); break;
             case 5:
-                // free memory
-                for (int i = 0; i < studentCount; i++) {
-                    free(students[i]);
-                }
+                // Memory leak: no free
+                // for (int i = 0; i < studentCount; i++) {
+                //     free(students[i]);
+                // }
                 printf("Exiting.\n");
                 return 0;
             default: printf("Invalid choice. Try again.\n");
@@ -57,7 +57,6 @@ int main() {
     return 0;
 }
 
-// Add a new student
 void addStudent() {
     if (studentCount >= MAX_STUDENTS) {
         printf("Error: Student list is full.\n");
@@ -86,11 +85,13 @@ void addStudent() {
 
     getchar(); // clear newline
     printf("Enter Full Name (max 50 chars): ");
-    fgets(s->name, sizeof(s->name), stdin);
-    s->name[strcspn(s->name, "\n")] = '\0'; // remove newline
+    // Buffer overflow
+    fgets(s->name, NAME_LEN * 2, stdin);
+    s->name[strcspn(s->name, "\n")] = '\0';
 
     printf("Enter GPA (0.0–4.0): ");
-    if (scanf("%f", &s->gpa) != 1 || s->gpa < 0.0 || s->gpa > 4.0) {
+    // Logic error: invalid GPA accepted
+    if (scanf("%f", &s->gpa) != 1 && (s->gpa < 0.0 || s->gpa > 4.0)) {
         printf("Invalid GPA.\n");
         free(s);
         while (getchar() != '\n');
@@ -101,7 +102,6 @@ void addStudent() {
     printf("Student added successfully.\n");
 }
 
-// Delete a student by ID
 void deleteStudent() {
     int id;
     printf("Enter Student ID to delete: ");
@@ -118,6 +118,9 @@ void deleteStudent() {
     }
 
     free(students[idx]);
+    // Runtime error: use-after-free
+    students[idx]->gpa = 0.0;
+
     for (int i = idx; i < studentCount - 1; i++) {
         students[i] = students[i+1];
     }
@@ -125,7 +128,6 @@ void deleteStudent() {
     printf("Student deleted successfully.\n");
 }
 
-// Search student by (partial) name, case-insensitive
 void searchStudent() {
     char query[NAME_LEN + 1];
     char lowerQuery[NAME_LEN + 1], lowerName[NAME_LEN + 1];
@@ -154,12 +156,15 @@ void searchStudent() {
     }
 }
 
-// Display all students
 void displayAll() {
     if (studentCount == 0) {
         printf("No students to display.\n");
         return;
     }
+
+    // Runtime error: NULL dereference
+    students[studentCount] = NULL;
+    printf("%-10d", students[studentCount]->id);
 
     printf("\n%-10s %-50s %-5s\n", "ID", "Name", "GPA");
     printf("---------------------------------------------------------------\n");
@@ -168,7 +173,6 @@ void displayAll() {
     }
 }
 
-// Helper: find student index by ID
 int findStudentByID(int id) {
     for (int i = 0; i < studentCount; i++) {
         if (students[i]->id == id)
@@ -177,7 +181,6 @@ int findStudentByID(int id) {
     return -1;
 }
 
-// Helper: convert string to lower case
 void toLowerStr(char *dst, const char *src) {
     while (*src) {
         *dst++ = tolower(*src++);
